@@ -1,3 +1,11 @@
+# Python Cheese Simulator
+
+# To fix:   Make it Leap frog
+#           Mouse input
+#           Energy calculator maybe         
+#           Make more stable
+#
+
 import pyglet
 import math
 from pyglet import shapes
@@ -10,7 +18,9 @@ pyglet.gl.glClearColor(0.1, 0.1, 0.1, 1.0)
 
 gravity = 9.81
 rad = 10
-k = 25
+k = 50
+global dragging
+global chosenP
 
 cheeseBatch = pyglet.graphics.Batch()
 
@@ -42,10 +52,6 @@ class cheeseParticle:
 
         # Acceleration due to gravity
         self.vy -= gravity*0.016
-
-        #Leap frog time 
-
-
 
         self.shape.x = self.x
         self.shape.y = self.y 
@@ -118,12 +124,48 @@ s45 = spring(p4, p5, 2*rad, k)
 s56 = spring(p5, p6, 2*rad, k)
 springs = [s12, s14, s15, s23, s24, s25, s26, s35, s36, s45, s56]
 
+def find_particle(x,y,cheeseParticles):
+    for p in cheeseParticles:
+        #if x<p.x+rad and x>p.x-rad and y<p.y+rad and y>p.y-rad:
+        if (p.x-x)*(p.x-x) + (p.y-y)*(p.y-y) < rad*rad:
+            return p
+    return 
+
 def update(dt):
     for s in springs:
         s.force(dt)
 
     for p in cheeseParticles:
         p.update()
+
+@window.event
+def on_mouse_press(x,y,button,modifier):
+    global chosenP
+    global dragging
+    chosenP = find_particle(x,y,cheeseParticles)
+    if chosenP != None:
+        chosenP.x = x
+        chosenP.y = y
+        chosenP.vx = 0
+        chosenP.vy = 0
+        dragging = True
+
+@window.event
+def on_mouse_release(x,y,button,modifier):
+    global dragging
+    global chosenP
+    dragging = False
+
+@window.event
+def on_mouse_drag(x,y,dx,dy,button,modifier):
+    global chosenP
+    global dragging
+    if dragging == True:
+        chosenP.x = x
+        chosenP.y = y
+        chosenP.vx = dx
+        chosenP.vy = dy
+
 
 # 60 fps
 pyglet.clock.schedule_interval(update, 1/60)
