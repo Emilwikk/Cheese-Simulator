@@ -1,7 +1,6 @@
 # Python Cheese Simulator
 
 # To fix:   Make it Leap frog
-#           Mouse input
 #           Energy calculator maybe         
 #           Make more stable
 #
@@ -11,14 +10,16 @@ import math
 from pyglet import shapes
 
 # Create a window
-window=pyglet.window.Window(1280,1024,"Cheese Simultator")
+screenHeight = 1024
+screenWidth = 1280
+window=pyglet.window.Window(screenWidth,screenHeight,"Cheese Simultator")
 
 # Set background color
 pyglet.gl.glClearColor(0.1, 0.1, 0.1, 1.0)
 
-gravity = 9.81
+gravity = 9.81*100
 rad = 10
-k = 50
+k = 850
 global dragging
 global chosenP
 
@@ -30,12 +31,20 @@ class cheeseParticle:
         self.y = y
         self.vx = 0
         self.vy = 0
-        self.shape = shapes.Circle(x, y, rad, color=(250, 225, 10), batch=cheeseBatch)
-    def update(self):
-        self.x += self.vx
-        self.y += self.vy
 
-        #Collision with floor and roof
+        # Velocity for half dt forward, for leap frog algorithm
+        self.vxHalf = 0
+        self.vyHalf = 0
+        self.shape = shapes.Circle(x, y, rad, color=(250, 225, 10), batch=cheeseBatch)
+    def update(self,dt):
+        #self.x += self.vx*dt
+        #self.y += self.vy*dt
+
+        # Leap frog position
+        self.x += self.vxHalf*dt
+        self.y += self.vyHalf*dt
+
+        #Collision with floor, ceiling and walls
         if self.x<rad or self.x>1280-rad:
             self.vx = -0.8*self.vx
         if self.y<rad or self.y>1024-rad:
@@ -44,14 +53,38 @@ class cheeseParticle:
         # Address the sinking through floor issue
         if self.y-rad<0:
             self.y = rad
-            if self.vy<0:
-                self.vy *= -0.8
-                if self.vy<1:
-                    self.vy = 0
+            if self.vyHalf<0:
+                self.vyHalf *= -0.8
+                if self.vyHalf<1:
+                    self.vyHalf = 0
+
+        # Ceiling
+        if self.y+rad>screenHeight:
+            self.y = screenHeight-rad
+            if self.vyHalf>0:
+                self.vyHalf *= -0.8
+                if self.vyHalf>-1:
+                    self.vyHalf = 0
+
+        # Right wall
+        if self.x+rad>screenWidth:
+            self.x = screenWidth-rad
+            if self.vxHalf>0:
+                self.vxHalf *= -0.8
+                if self.vxHalf>-1:
+                    self.vxHalf = 0
+
+        # Left wall
+        if self.x-rad<0:
+            self.x = rad
+            if self.vxHalf<0:
+                self.vxHalf *= -0.8
+                if self.vxHalf<1:
+                    self.vxHalf = 0
 
 
         # Acceleration due to gravity
-        self.vy -= gravity*0.016
+        self.vyHalf -= gravity*dt
 
         self.shape.x = self.x
         self.shape.y = self.y 
@@ -63,7 +96,7 @@ class spring:
         self.b = b
         self.restLength = restLength
         self.k = k
-    def force(self,dt):
+    def halfForce(self,dt):
         xDist = self.b.x-self.a.x
         yDist = self.b.y-self.a.y
         dist = math.sqrt(xDist*xDist+yDist*yDist)
@@ -92,13 +125,49 @@ class spring:
 
         fx = fx - damp_fx
         fy = fy - damp_fy
-
-        # Apply to particles  (dv = F/m*dt where m and dt is both 1 => dv = F)
-        self.a.vx -= fx*dt
-        self.a.vy -= fy*dt
-        self.b.vx += fx*dt
-        self.b.vy += fy*dt
         
+        #Leap frog half step
+        self.a.vxHalf -= 0.5*dt*fx
+        self.a.vyHalf -= 0.5*dt*fy
+        self.b.vxHalf += 0.5*dt*fx
+        self.b.vyHalf += 0.5*dt*fy
+
+    def Force(self,dt):
+        xDist = self.b.x-self.a.x
+        yDist = self.b.y-self.a.y
+        dist = math.sqrt(xDist*xDist+yDist*yDist)
+
+        # No division by zero pls    
+        if dist == 0:
+            return
+        
+        # Magnitude of force
+        fMag = self.k*(self.restLength-dist)
+        # Force components
+        fx = fMag*(xDist/dist)
+        fy = fMag*(yDist/dist)
+
+        # Damping
+        dampCoef = 3
+        dx = xDist/dist
+        dy = yDist/dist
+
+        relVx = self.b.vxHalf-self.a.vxHalf
+        relVy = self.b.vyHalf-self.a.vyHalf
+        dot = relVx*dx + relVy*dy # Projection of velocity along spring
+
+        damp_fx = dampCoef*dot*dx
+        damp_fy = dampCoef*dot*dy
+
+        fx = fx - damp_fx
+        fy = fy - damp_fy
+
+        # Leap frog final step
+        self.a.vx = self.a.vxHalf-0.5*fx*dt
+        self.a.vy = self.a.vyHalf-0.5*fy*dt
+        self.b.vx = self.b.vxHalf+0.5*fx*dt
+        self.b.vy = self.b.vyHalf+0.5*fy*dt
+    
 
         
 
@@ -133,11 +202,14 @@ def find_particle(x,y,cheeseParticles):
 
 def update(dt):
     for s in springs:
-        s.force(dt)
+        s.halfForce(dt)
 
     for p in cheeseParticles:
-        p.update()
+        p.update(dt)
 
+    for s in springs:
+        s.Force(dt)
+    
 @window.event
 def on_mouse_press(x,y,button,modifier):
     global chosenP
@@ -165,6 +237,8 @@ def on_mouse_drag(x,y,dx,dy,button,modifier):
         chosenP.y = y
         chosenP.vx = dx
         chosenP.vy = dy
+        chosenP.vxHalf = dx
+        chosenP.vyHalf = dy
 
 
 # 60 fps
