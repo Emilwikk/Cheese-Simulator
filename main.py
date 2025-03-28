@@ -1,9 +1,5 @@
 # Python Cheese Simulator
 
-# To fix:   Make it Leap frog
-#           Energy calculator maybe         
-#           Make more stable
-#
 
 import pyglet
 import math
@@ -11,7 +7,7 @@ from pyglet import shapes
 
 # Create a window
 screenHeight = 1024
-screenWidth = 1280
+screenWidth = 2000
 window=pyglet.window.Window(screenWidth,screenHeight,"Cheese Simultator")
 
 # Set background color
@@ -22,6 +18,8 @@ rad = 10
 k = 850
 global dragging
 global chosenP
+fricTol = 0.01
+fricCoef = 0.5
 
 cheeseBatch = pyglet.graphics.Batch()
 
@@ -85,6 +83,10 @@ class cheeseParticle:
 
         # Acceleration due to gravity
         self.vyHalf -= gravity*dt
+
+        # Friction
+        if self.y < rad+fricTol:
+            self.vxHalf += (1-2*(self.vxHalf>0))*fricCoef*gravity*dt
 
         self.shape.x = self.x
         self.shape.y = self.y 
