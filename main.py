@@ -4,22 +4,17 @@
 import pyglet
 import math
 from pyglet import shapes
+import config
 
 # Create a window
-screenHeight = 1024
-screenWidth = 2000
-window=pyglet.window.Window(screenWidth,screenHeight,"Cheese Simultator")
+window=pyglet.window.Window(config.screenWidth,config.screenHeight,"Cheese Simultator")
 
 # Set background color
-pyglet.gl.glClearColor(0.1, 0.1, 0.1, 1.0)
+pyglet.gl.glClearColor(config.backgroundColor[0],config.backgroundColor[1],config.backgroundColor[2],config.backgroundColor[3])
 
-gravity = 9.81*100
-rad = 10
-k = 850
 global dragging
 global chosenP
-fricTol = 0.01
-fricCoef = 0.5
+
 
 cheeseBatch = pyglet.graphics.Batch()
 
@@ -33,7 +28,7 @@ class cheeseParticle:
         # Velocity for half dt forward, for leap frog algorithm
         self.vxHalf = 0
         self.vyHalf = 0
-        self.shape = shapes.Circle(x, y, rad, color=(250, 225, 10), batch=cheeseBatch)
+        self.shape = shapes.Circle(x, y, config.rad, color=(250, 225, 10), batch=cheeseBatch)
     def update(self,dt):
         #self.x += self.vx*dt
         #self.y += self.vy*dt
@@ -43,38 +38,38 @@ class cheeseParticle:
         self.y += self.vyHalf*dt
 
         #Collision with floor, ceiling and walls
-        if self.x<rad or self.x>1280-rad:
+        if self.x<config.rad or self.x>config.screenWidth-config.rad:
             self.vx = -0.8*self.vx
-        if self.y<rad or self.y>1024-rad:
+        if self.y<config.rad or self.y>config.screenHeight-config.rad:
             self.vy = -0.8*self.vy
 
         # Address the sinking through floor issue
-        if self.y-rad<0:
-            self.y = rad
+        if self.y-config.rad<0:
+            self.y = config.rad
             if self.vyHalf<0:
                 self.vyHalf *= -0.8
                 if self.vyHalf<1:
                     self.vyHalf = 0
 
         # Ceiling
-        if self.y+rad>screenHeight:
-            self.y = screenHeight-rad
+        if self.y+config.rad>config.screenHeight:
+            self.y = config.screenHeight-config.rad
             if self.vyHalf>0:
                 self.vyHalf *= -0.8
                 if self.vyHalf>-1:
                     self.vyHalf = 0
 
         # Right wall
-        if self.x+rad>screenWidth:
-            self.x = screenWidth-rad
+        if self.x+config.rad>config.screenWidth:
+            self.x = config.screenWidth-config.rad
             if self.vxHalf>0:
                 self.vxHalf *= -0.8
                 if self.vxHalf>-1:
                     self.vxHalf = 0
 
         # Left wall
-        if self.x-rad<0:
-            self.x = rad
+        if self.x-config.rad<0:
+            self.x = config.rad
             if self.vxHalf<0:
                 self.vxHalf *= -0.8
                 if self.vxHalf<1:
@@ -82,11 +77,11 @@ class cheeseParticle:
 
 
         # Acceleration due to gravity
-        self.vyHalf -= gravity*dt
+        self.vyHalf -= config.gravity*dt
 
         # Friction
-        if self.y < rad+fricTol:
-            self.vxHalf += (1-2*(self.vxHalf>0))*fricCoef*gravity*dt
+        if self.y < config.rad+config.fricTol:
+            self.vxHalf += (1-2*(self.vxHalf>0))*config.fricCoef*config.gravity*dt
 
         self.shape.x = self.x
         self.shape.y = self.y 
@@ -175,30 +170,30 @@ class spring:
 
 
 p1 = cheeseParticle(500,500)
-p2 = cheeseParticle(p1.x+2*rad,p1.y)
-p3 = cheeseParticle(p1.x+4*rad,p1.y)
-p4 = cheeseParticle(p1.x, p1.y-2*rad)
-p5 = cheeseParticle(p2.x,p1.y-2*rad)
-p6 = cheeseParticle(p3.x,p1.y-2*rad)
+p2 = cheeseParticle(p1.x+2*config.rad,p1.y)
+p3 = cheeseParticle(p1.x+4*config.rad,p1.y)
+p4 = cheeseParticle(p1.x, p1.y-2*config.rad)
+p5 = cheeseParticle(p2.x,p1.y-2*config.rad)
+p6 = cheeseParticle(p3.x,p1.y-2*config.rad)
 cheeseParticles = [p1, p2, p3, p4, p5, p6]
 
-s12 = spring(p1, p2, 2*rad, k)
-s14 = spring(p1, p4, 2*rad, k)
-s15 = spring(p1, p5, 2*rad, k)
-s23 = spring(p2, p3, 2*rad, k)
-s24 = spring(p2, p4, 2*rad, k)
-s25 = spring(p2, p5, 2*rad, k)
-s26 = spring(p2, p6, 2*rad, k)
-s35 = spring(p3, p5, 2*rad, k)
-s36 = spring(p3, p6, 2*rad, k)
-s45 = spring(p4, p5, 2*rad, k)
-s56 = spring(p5, p6, 2*rad, k)
+s12 = spring(p1, p2, 2*config.rad, config.k)
+s14 = spring(p1, p4, 2*config.rad, config.k)
+s15 = spring(p1, p5, 2*config.rad, config.k)
+s23 = spring(p2, p3, 2*config.rad, config.k)
+s24 = spring(p2, p4, 2*config.rad, config.k)
+s25 = spring(p2, p5, 2*config.rad, config.k)
+s26 = spring(p2, p6, 2*config.rad, config.k)
+s35 = spring(p3, p5, 2*config.rad, config.k)
+s36 = spring(p3, p6, 2*config.rad, config.k)
+s45 = spring(p4, p5, 2*config.rad, config.k)
+s56 = spring(p5, p6, 2*config.rad, config.k)
 springs = [s12, s14, s15, s23, s24, s25, s26, s35, s36, s45, s56]
 
 def find_particle(x,y,cheeseParticles):
     for p in cheeseParticles:
         #if x<p.x+rad and x>p.x-rad and y<p.y+rad and y>p.y-rad:
-        if (p.x-x)*(p.x-x) + (p.y-y)*(p.y-y) < rad*rad:
+        if (p.x-x)*(p.x-x) + (p.y-y)*(p.y-y) < config.rad*config.rad:
             return p
     return 
 
@@ -244,7 +239,7 @@ def on_mouse_drag(x,y,dx,dy,button,modifier):
 
 
 # 60 fps
-pyglet.clock.schedule_interval(update, 1/60)
+pyglet.clock.schedule_interval(update, 1/100)
 
 @window.event
 def on_draw():
